@@ -1,4 +1,4 @@
-# clikipedia
+# Clikipedia
 Read Wikipedia articles from the command line
 
 ### Installation
