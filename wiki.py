@@ -10,7 +10,7 @@ import time
 
 stdscr = curses.initscr()
 curses.noecho()
-curses.cbreak()
+# curses.cbreak()
 stdscr.keypad(True)
 
 
@@ -68,6 +68,7 @@ def clean_paragraphs(paragraphs):
         p = p.get_text()
         if p != '':
             clean_paragraphs.append(p)
+            clean_paragraphs.append('NEWLINE')
         else:
             pass
     return clean_paragraphs
@@ -75,7 +76,6 @@ def clean_paragraphs(paragraphs):
 
 def paragraph_list():
     query_string = parse_args_to_query()
-    print(query_string)
     raw_page = get_page('https://en.wikipedia.org/wiki/' + query_string)
     mapped_page = map_DOM(raw_page)
     if is_valid_wiki_query(mapped_page):
@@ -88,20 +88,23 @@ def paragraph_list():
         sys.exit(1)
 
 
-def get_links(content):
-    links = []
-    for link in content.find_all('a'):
-        links.append(link)
-    return links
+def line_wrap(text, max_chars):
+    text_list = text.split()
+    line_list = []
+    line = []
+    for word in text_list:
+        if word == 'NEWLINE':
+            line_list.append(' '.join(line))
+            line_list.append('NEWLINE')
+            line = []
+        elif len(' '.join(line)) + len(word) + 1 > max_chars:
+            line_list.append(' '.join(line))
+            line = [word]
+        elif len(' '.join(line)) + len(word) + 1 < max_chars:
+            line.append(word)
 
-
-def get_all_js(webpage):
-    scripts = []
-    for script in webpage.find_all('script'):
-        source = script.get('src')
-        if source is not None:
-            scripts.append(source)
-    return scripts
+    line_list.append(' '.join(line))
+    return line_list
 
 
 def teardown():
@@ -112,9 +115,16 @@ def teardown():
 
 
 def main(stdscr):
+    # Establish dimensions
+    max_cols = 80
+    max_rows = 40
+
+    # Convert list of paragraphs to lines
     paragraphs = paragraph_list()
-    p_count = len(paragraphs)
-    current_p = 0
+    lines = line_wrap(' '.join(paragraphs), max_cols)
+
+    top_line = 0
+
     stdscr.nodelay(True)
     stdscr.clear()
 
@@ -122,13 +132,18 @@ def main(stdscr):
         c = stdscr.getch()
         curses.flushinp()
         stdscr.clear()
-        stdscr.addstr(paragraphs[current_p])
+
+        for i in range(top_line, top_line + max_rows):
+            if lines[i] == 'NEWLINE':
+                stdscr.addstr(i-top_line+2, 2, '\n')
+            else:
+                stdscr.addstr(i-top_line+2, 2, lines[i])
         stdscr.refresh()
 
-        if c == curses.KEY_DOWN and current_p < (p_count - 1):
-            current_p += 1
-        elif c == curses.KEY_UP and current_p > 0:
-            current_p -= 1
+        if c == curses.KEY_DOWN and top_line < (len(lines) - max_rows):
+            top_line += 1
+        elif c == curses.KEY_UP and top_line > 0:
+            top_line -= 1
         elif c == ord('q'):
             teardown()
             sys.exit()
