@@ -154,4 +154,4 @@ def main(stdscr):
 wrapper(main)
 
 if __name__ == '__main__':
-    ss
+    main()
