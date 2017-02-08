@@ -13,7 +13,7 @@ def build_wiki_query():
         query = sys.argv[1].capitalize()
 
     if len(sys.argv) > 2:
-        for arg in arg_list:
+        for arg in sys.argv[2:]:
             if arg != ('the' or 'an' or 'and' or 'or' or 'in' or 'on'):
                 print(arg)
                 arg = arg.capitalize()
@@ -24,29 +24,6 @@ def build_wiki_query():
     return query
 
 
-def is_article(webpage):
-    """
-        Checks if page in response is article
-    """
-    check = webpage.find(id='noarticletext')
-    if check is None:
-        return True
-    else:
-        return False
-
-
-def is_disambiguation_page(webpage):
-    """
-        Checks if page in response is disambiguation link page
-    """
-    redirection = webpage.find_all('span', {'class': 'mw-redirectedfrom'})
-    if redirection is not None:
-        return True
-    else:
-        return False
-
-
-# If page in response is article
 def get_response(query):
     raw_page = get_page(query)
     mapped_page = map_DOM(raw_page)
@@ -58,12 +35,26 @@ def isolate_content(webpage):
     return content_container
 
 
+def get_page_content():
+    content = isolate_content(get_response(build_wiki_query()))
+    return content
+
+
+def page_type(content):
+    if content.find_all('div', {'class': 'noarticletext'}) != []:
+        return 'Nothing'
+    elif content.find(id='disambigbox') is not None:
+        return 'Disambiguation'
+    else:
+        return 'Article'
+
+
 def target_text(content):
     paragraphs = get_paragraphs(content)
     return paragraphs
 
 
-def clean_article_paragraphs(paragraphs):
+def clean_article(paragraphs):
     clean_paragraphs = []
     for p in paragraphs:
         p = p.get_text()
@@ -75,19 +66,34 @@ def clean_article_paragraphs(paragraphs):
     return clean_paragraphs
 
 
-def format_content():
-    query_string = build_wiki_query()
-    response = get_response(query_string)
-    if is_article(response):
-        content = isolate_content(response)
-        target_text = get_paragraphs(content)
-        display_text = clean_article_paragraphs(target_text)
-        return display_text
-    elif is_disambiguation_page(response):
-        content = isolate_content(response)
-        return content.text
+def format_article(content):
+    target_text = get_paragraphs(content)
+    display_text = clean_article(target_text)
+    return display_text
 
 
-# If page in response is disambiguation list
-def list_disambiguations(content):
-    pass
+def clean_disambiguation(content):
+    links = []
+    # Remove TOC
+    content.find(id='toc').decompose()
+    for link_lists in content.find_all('ul'):
+        for item in link_lists.find_all('li'):
+            for link in item.find_all('a'):
+                link = {
+                    'href': link.get('href'),
+                    'title': link.get('title'),
+                    'text': link.get_text()
+                }
+                links.append(link)
+                print(link)
+    return links
+
+
+def format_disambiguation(content):
+    link_list = clean_disambiguation(content)
+    for _ in link_list:
+        print(_)
+
+
+if __name__ == '__main__':
+    format_disambiguation()
