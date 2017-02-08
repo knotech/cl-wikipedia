@@ -54,40 +54,58 @@ def teardown():
 
 
 def main(stdscr):
-    # Establish dimensions
+    # Establish dimensions of reading window
     max_cols = 80
     max_rows = 40
 
-    # Convert list of paragraphs to lines
-    paragraphs = format_content()
-    lines = line_wrap(' '.join(paragraphs), max_cols)
+    # Get the page, and check the type.
+    content = get_page_content()
+    page_format = page_type(content)
+    print(page_format)
+    if page_format == 'Nothing':
+        teardown()
+        print('Not a real thing according to wikipedia...')
+        sys.exit(0)
+    elif page_format == 'Disambiguation':
+        teardown()
+        format_disambiguation(content)
+        sys.exit(0)
+    elif page_format == 'Article':
+        paragraphs = format_article(content)
+        lines = line_wrap(' '.join(paragraphs), max_cols)
 
-    top_line = 0
+        top_line = 0
 
-    stdscr.nodelay(True)
-    stdscr.clear()
-
-    while True:
-        c = stdscr.getch()
-        curses.flushinp()
+        stdscr.nodelay(True)
         stdscr.clear()
 
-        for i in range(top_line, top_line + max_rows):
-            if lines[i] == 'NEWLINE':
-                stdscr.addstr(i-top_line+2, 2, '\n')
-            else:
-                stdscr.addstr(i-top_line+2, 2, lines[i])
-        stdscr.refresh()
+        while True:
+            c = stdscr.getch()
+            curses.flushinp()
+            stdscr.clear()
 
-        if c == curses.KEY_DOWN and top_line < (len(lines) - max_rows):
-            top_line += 1
-        elif c == curses.KEY_UP and top_line > 0:
-            top_line -= 1
-        elif c == ord('q'):
-            teardown()
-            sys.exit()
+            for i in range(top_line, top_line + max_rows):
+                if lines[i] == 'NEWLINE':
+                    stdscr.addstr(i-top_line+2, 2, '\n')
+                else:
+                    stdscr.addstr(i-top_line+2, 2, lines[i])
+            stdscr.refresh()
 
-        time.sleep(0.05)
+            if c == curses.KEY_DOWN and top_line < (len(lines) - max_rows):
+                top_line += 1
+            elif c == curses.KEY_UP and top_line > 0:
+                top_line -= 1
+            elif c == ord('q'):
+                teardown()
+                sys.exit()
+
+            time.sleep(0.05)
+
+    else:
+        teardown()
+        print('Not sure what type of page this is...')
+        print(page_format)
+        sys.exit(3)
 
 
 wrapper(main)
